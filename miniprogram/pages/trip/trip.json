@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "旅程",
+  "usingComponents": {
+    "m-icon": "/components/icon/icon"
+  },
+  "navigationStyle": "custom"
+}

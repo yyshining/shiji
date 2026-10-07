@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "拾迹",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "m-icon": "/components/icon/icon"
+  }
+}

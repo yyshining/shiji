@@ -1,0 +1,10 @@
+const C=require('./cloud'),S=require('./store'),M=require('./model');
+let busy=false;
+async function push(){if(busy)throw Error('正在同步，请稍候');busy=true;try{const {owner}=await C.call('status'),state=S.read(),source=JSON.stringify(state),copy=M.clone(state),key='shiji-cloud-'+owner,meta=wx.getStorageSync(key)||{revision:0,files:{}};meta.files=meta.files||{};
+ async function upload(path){if(!path||path.startsWith('/assets/')||path.startsWith('cloud://'))return path;if(meta.files[path])return meta.files[path];const r=await wx.cloud.uploadFile({cloudPath:'shiji/'+owner+'/'+Date.now()+'-'+Math.random().toString(36).slice(2)+'.jpg',filePath:path});meta.files[path]=r.fileID;wx.setStorageSync(key,meta);return r.fileID;}
+ copy.profile.avatar=await upload(copy.profile.avatar);for(const t of copy.trips){t.cover=await upload(t.cover);for(const e of t.entries){const images=[];for(const p of e.photos||[])images.push(await upload(p));e.photos=images;}}
+ if(JSON.stringify(S.read())!==source)throw Error('上传期间记录有更新，请重新同步。');const result=await C.call('push',{state:copy,revision:meta.revision||0});wx.setStorageSync(key,{...meta,revision:result.revision,lastSync:Date.now()});return result;
+ }finally{busy=false;}}
+async function pull(){if(busy)throw Error('正在同步，请稍候');busy=true;try{const source=JSON.stringify(S.read()),{owner}=await C.call('status'),r=await C.call('pull');if(!r.state)return false;if(JSON.stringify(S.read())!==source)throw Error('下载期间记录有更新，请重新同步。');wx.setStorageSync('shiji-before-cloud-restore',S.read());S.update(s=>{Object.keys(s).forEach(k=>delete s[k]);Object.assign(s,r.state);});const key='shiji-cloud-'+owner,meta=wx.getStorageSync(key)||{};wx.setStorageSync(key,{...meta,revision:r.revision,lastSync:Date.now()});return true;}finally{busy=false;}}
+function restoreBackup(){const backup=wx.getStorageSync('shiji-before-cloud-restore');if(!backup)throw Error('没有可恢复的本地副本');S.update(s=>{Object.keys(s).forEach(k=>delete s[k]);Object.assign(s,backup);});}
+module.exports={push,pull,restoreBackup};

@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict');
+const {ownerKey,validateSnapshot,parseExtraction}=require('../../cloudfunctions/shijiGateway/core');
+const seed=require('../lib/seed'),M=require('../lib/model');const owner=ownerKey('test-only');
+const state={...M.clone(seed),version:1};assert(validateSnapshot(state,owner));
+const invalid=M.clone(state);invalid.trips[0].cover='wxfile://local.jpg';assert.throws(()=>validateSnapshot(invalid,owner),/UNSYNCED_MEDIA/);
+invalid.trips[0].cover='/tmp/local.jpg';assert.throws(()=>validateSnapshot(invalid,owner),/UNSYNCED_MEDIA/);
+invalid.trips[0].cover='cloud://env/shiji/another-user/a.jpg';assert.throws(()=>validateSnapshot(invalid,owner),/UNSYNCED_MEDIA/);
+invalid.trips[0].cover='cloud://env/shiji/'+owner+'/a.jpg';assert(validateSnapshot(invalid,owner));
+assert.equal(parseExtraction('{"items":[{"kind":"stay","title":"旅店","date":"2026-02-30"}]}')[0].date,'');assert.throws(()=>parseExtraction('not json'),/INVALID_AI_RESPONSE/);assert.throws(()=>parseExtraction('{"items":[{"kind":"execute"}]}'),/INVALID_AI_RESPONSE/);
+assert.throws(()=>parseExtraction('null'),/INVALID_AI_RESPONSE/);assert.throws(()=>parseExtraction('{"items":[null]}'),/INVALID_AI_RESPONSE/);
+const memory=new Map();global.wx={getStorageSync:k=>memory.get(k),setStorageSync:(k,v)=>memory.set(k,M.clone(v)),cloud:{uploadFile:async()=>({fileID:'cloud://env/shiji/'+owner+'/photo.jpg'})}};
+const S=require('../lib/store');S.read();let revision=0,remote=null,conflict=false;
+const cloud=require('../lib/cloud');cloud.call=async(action,p={})=>{if(action==='status')return{owner};if(action==='pull')return{revision,state:remote};if(action==='push'){if(conflict||p.revision!==revision)throw Error('CONFLICT');remote=p.state;return{revision:++revision};}};
+const sync=require('../lib/sync');
+(async()=>{S.edit('current',t=>{t.diary='本地草稿';t.cover='wxfile://local.jpg';});await sync.push();assert.equal(remote.trips[0].cover,'cloud://env/shiji/'+owner+'/photo.jpg');assert.equal(S.trip('current').cover,'wxfile://local.jpg');conflict=true;await assert.rejects(sync.push(),/CONFLICT/);assert.equal(S.trip('current').diary,'本地草稿');conflict=false;remote.trips[0].diary='另一台设备';await sync.pull();assert.equal(S.trip('current').diary,'另一台设备');sync.restoreBackup();assert.equal(S.trip('current').diary,'本地草稿');console.log('PASS: file ownership, malformed model responses, upload mapping, revision conflict preservation, pull backup and recovery');})().catch(e=>{console.error(e);process.exitCode=1;});

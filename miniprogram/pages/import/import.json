@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "把旧照片，带回旅程",
+  "usingComponents": {
+    "m-icon": "/components/icon/icon"
+  },
+  "navigationStyle": "custom"
+}

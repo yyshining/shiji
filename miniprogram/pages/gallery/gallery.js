@@ -1,0 +1,2 @@
+const S=require('../../lib/store'),U=require('../../lib/ui');
+Page({data:{photos:[]},onLoad(q){this.id=q.trip;},onShow(){U.run(()=>{this.setData({photos:S.trip(this.id).entries.flatMap(e=>(e.photos||[]).map(src=>({src,id:e.id,date:e.date})))});});},preview(e){wx.previewImage({current:e.currentTarget.dataset.src,urls:this.data.photos.map(p=>p.src)});},add(){U.go('editor',{trip:this.id,kind:'moment'});}});

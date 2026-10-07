@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict'),M=require('../lib/model');
+const memory=new Map();let fail=false;
+global.wx={getStorageSync:k=>memory.has(k)?M.clone(memory.get(k)):undefined,setStorageSync:(k,v)=>{if(fail)throw new Error('quota');memory.set(k,M.clone(v));}};
+const S=require('../lib/store');
+assert.equal(M.validDate('2026-13-01'),false);assert.equal(M.validDate('2026-02-30'),false);assert.equal(M.validDate('2024-02-29'),true);
+assert.deepEqual(M.dates('2026-09-30','2026-10-02'),['2026-09-30','2026-10-01','2026-10-02']);
+const t={id:'qa',title:'验证旅程',start:'2026-10-01',end:'2026-10-03',members:['甲','乙','丙'],status:'active',checks:[],diary:'',entries:[],expenses:[]};
+S.update(s=>s.trips.push(t));
+const stay={id:'s',kind:'stay',date:t.start,checkout:'2026-10-03',title:'两晚住宿',time:''};M.validateEntry(stay,t);
+S.edit('qa',t=>t.entries.push(stay));assert.equal(M.onDay(S.trip('qa'),'2026-10-02').length,1);assert.equal(M.onDay(S.trip('qa'),'2026-10-03').length,0);
+S.edit('qa',t=>t.entries[0].checkout='2026-10-02');assert.equal(M.onDay(S.trip('qa'),'2026-10-02').length,0);
+S.edit('qa',t=>{t.diary='换行\n保留';t.status='past';});assert.equal(S.trip('qa').diary,'换行\n保留');assert.equal(S.trip('qa').entries[0].id,'s');
+fail=true;assert.throws(()=>S.edit('qa',t=>t.title='不该写入'));fail=false;assert.equal(S.trip('qa').title,'验证旅程');
+const expense={id:'e',name:'午餐',date:t.start,cents:100,payer:'甲',people:['甲','乙','丙'],type:'expense'};M.validateExpense(expense,t);t.expenses.push(expense);assert.deepEqual(M.balances(t).map(b=>b.cents),[66,-33,-33]);assert.equal(M.balances(t).reduce((n,b)=>n+b.cents,0),0);
+t.expenses.push({id:'r',name:'归还',date:t.start,cents:33,payer:'甲',people:['乙'],type:'collection'});assert.equal(M.total(t),100);assert.deepEqual(M.balances(t).map(b=>b.cents),[33,0,-33]);
+assert.throws(()=>M.validateExpense({...expense,people:[]},t));assert.throws(()=>M.validateExpense({...expense,type:'collection',people:['甲']},t));assert.throws(()=>M.validateEntry({...stay,date:'2026-10-05'},t));
+const fresh=S.read();fresh.trips[0].title='外部变更';assert.notEqual(S.read().trips[0].title,'外部变更');
+console.log('PASS: valid dates, cross-month range, stay checkout boundary, edit propagation, archive persistence, write rollback, integer-cent splits and repayments');

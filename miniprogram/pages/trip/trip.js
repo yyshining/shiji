@@ -1,0 +1,28 @@
+const S=require('../../lib/store'),M=require('../../lib/model'),U=require('../../lib/ui');
+const Info=require('../../lib/destination-info');
+const atlas=require('../../lib/atlas');
+const icons={moment:'camera',transfer:'car',stay:'bed',activity:'pin'};
+const displayMoney=c=>M.money(c).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+const names={moment:'片段',transfer:'交通',stay:'住宿',activity:'体验'};
+Page({
+ data:{mapDay:2,mapZoom:true,tab:'overview',selected:'',filter:'all',trip:null,days:[],entries:[],summary:[],expanded:'',total:'0',balances:[],filters:[{id:'all',name:'全部'},{id:'transfer',name:'交通'},{id:'stay',name:'住宿'}]},
+ onLoad(q){this.id=q.id;},onShow(){this.refresh();this.loadInfo();},
+ refresh(){U.run(()=>{const t=S.trip(this.id),ds=M.dates(t.start,t.end),photos=t.entries.flatMap(e=>(e.photos||[]).map(src=>({src,id:e.id}))),max=Math.max(1,...ds.map(d=>M.onDay(t,d).length));const summary=ds.map((date,i)=>{const es=M.onDay(t,date,this.data.filter).map(e=>({...e,kindName:names[e.kind],icon:icons[e.kind],displayTitle:e.kind==='transfer'?e.from+' → '+e.to:e.title||'路上的一刻'}));return{date,weekday:['周日','周一','周二','周三','周四','周五','周六'][new Date(date+'T12:00:00').getDay()],short:date.slice(5).replace('-','.'),number:i+1,count:es.length,segments:['transfer','stay','activity','moment'].map((kind,k)=>({kind,k,count:es.filter(e=>e.kind===kind).length,height:es.filter(e=>e.kind===kind).length*Math.min(19,96/max)})),width:Math.round(es.length/max*100),entries:es};});const selected=this.data.selected&&ds.includes(this.data.selected)?this.data.selected:'';this.setData({atlas:t.id==='current'?atlas(this.data.mapDay,this.data.mapZoom):null,focus:summary.find(d=>d.date===this.data.focusDate)||summary[0],tripRange:t.start.replace(/-/g,'.')+' — '+t.end.slice(5).replace('-','.'),trip:t,days:summary,summary,selected,entries:summary.find(d=>d.date===selected)?.entries||[],photos,photoCount:photos.length,previewPhotos:photos.slice(0,5),total:displayMoney(M.total(t)),mine:displayMoney(t.expenses.filter(e=>e.type!=='collection').reduce((n,e)=>{const i=e.people.indexOf(S.read().profile.name);return n+(i<0?0:Math.floor(e.cents/e.people.length)+(i<e.cents%e.people.length?1:0));},0)),expenseCount:t.expenses.filter(e=>e.type!=='collection').length,expenseGroups:[...new Set(t.expenses.map(e=>e.date))].sort().reverse().map(date=>({date,label:Number(date.slice(5,7))+'月'+Number(date.slice(8))+'日',total:displayMoney(t.expenses.filter(e=>e.date===date&&e.type!=='collection').reduce((n,e)=>n+e.cents,0)),items:t.expenses.filter(e=>e.date===date).map(e=>({...e,amount:displayMoney(e.cents)}))})),balances:M.balances(t),expenses:t.expenses.map(e=>({...e,amount:M.money(e.cents)})),progress:t.checks.length?Math.round(t.checks.filter(c=>c.done).length/t.checks.length*100):0,done:t.checks.filter(c=>c.done).length});wx.setNavigationBarTitle({title:t.title});});},
+ async loadInfo(force=false){const t=this.data.trip;if(!t||t.status==='past'||!require('../../lib/geo').places[t.place])return;this.setData({infoLoading:true});await Info.load(t.place,'zh',force,{start:t.start,end:t.end});const info=Info.peek(t.place,'zh',{start:t.start,end:t.end}),daily=info.weather&&info.weather.daily;const low=daily?Math.min(...daily.temperature_2m_min.filter(Number.isFinite)):0,high=daily?Math.max(...daily.temperature_2m_max.filter(Number.isFinite)):0;const weather=(daily?daily.time:[]).map((date,i)=>({date,short:date.slice(5).replace('-','.'),label:Info.weatherName(daily.weather_code[i],'zh'),min:Math.round(daily.temperature_2m_min[i]),max:Math.round(daily.temperature_2m_max[i]),left:100*(daily.temperature_2m_min[i]-low)/Math.max(1,high-low),width:100*(daily.temperature_2m_max[i]-daily.temperature_2m_min[i])/Math.max(1,high-low)}));this.setData({info,weather,infoLoading:false,placeName:require('../../lib/geo').places[t.place].zh});},
+ refreshInfo(){this.loadInfo(true);},
+ expandCulture(){this.setData({cultureExpanded:!this.data.cultureExpanded});},
+ mapPoint(e){this.setData({mapDay:Number(e.currentTarget.dataset.index)});this.refresh();},
+ mapZoom(){this.setData({mapZoom:!this.data.mapZoom});this.refresh();},
+ focusDay(e){this.setData({focusDate:e.currentTarget.dataset.date});this.refresh();},
+ tab(e){this.setData({tab:e.currentTarget.dataset.id});},
+ day(e){this.setData({selected:e.currentTarget.dataset.date});this.refresh();},
+ expand(e){const d=e.currentTarget.dataset.date;this.setData({expanded:this.data.expanded===d?'':d});},
+ filter(e){this.setData({filter:e.currentTarget.dataset.id});this.refresh();},
+ edit(e){U.go('editor',{trip:this.id,kind:e.currentTarget.dataset.kind||'moment',entry:e.currentTarget.dataset.id||'',date:this.data.selected||this.data.trip.start});},
+ add(){wx.showActionSheet({itemList:['旅行片段','交通','住宿','体验'],success:r=>U.go('editor',{trip:this.id,kind:['moment','transfer','stay','activity'][r.tapIndex],date:this.data.selected||this.data.trip.start})});},
+ notebook(e){U.go('notebook',{trip:this.id,kind:e.currentTarget.dataset.kind});},
+ gallery(){U.go('gallery',{trip:this.id});},
+ cover(){U.go('editor',{trip:this.id,kind:'cover'});},
+ assistant(){U.go('assistant',{trip:this.id});},settlement(){this.setData({settlementOpen:true});},closeSettlement(){this.setData({settlementOpen:false});},noop(){},
+ menu(){const t=this.data.trip;wx.showActionSheet({itemList:['编辑旅程',t.status==='past'?'恢复到在途':'结束并归档'],success:r=>{if(r.tapIndex===0)return U.go('editor',{kind:'trip',trip:this.id});wx.showModal({title:t.status==='past'?'恢复这段旅程？':'结束这段旅程？',content:'已有的片段、清单、日记和账本都会保留。',success:r=>{if(r.confirm)U.run(()=>{S.edit(this.id,t=>{t.status=t.status==='past'?'active':'past';});this.refresh();});}});}});}
+});

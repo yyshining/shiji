@@ -1,0 +1,2 @@
+<m-nav title="图片空间"/>
+<view class="page"><view class="row section"><view class="title">图片空间 <text class="small">{{photos.length}}</text></view><button class="round" bindtap="add">＋</button></view><view class="photo-grid"><view wx:for="{{photos}}" wx:key="src" class="photo-box" bindtap="preview" data-src="{{item.src}}"><image src="{{item.src}}" mode="aspectFill"/><text class="small">{{item.date}}</text></view></view><view wx:if="{{!photos.length}}" class="empty">把旅途里的第一张照片放进来</view></view>

@@ -1,0 +1,26 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/trip/trip",
+    "pages/editor/editor",
+    "pages/notebook/notebook",
+    "pages/gallery/gallery",
+    "pages/import/import",
+    "pages/sync/sync",
+    "pages/assistant/assistant"
+  ],
+  "window": {
+    "navigationBarTitleText": "拾迹",
+    "navigationBarBackgroundColor": "#f6f8f1",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f6f8f1"
+  },
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents",
+  "sitemapLocation": "sitemap.json",
+  "usingComponents": {
+    "m-nav": "/components/nav/nav",
+    "m-picker": "/components/picker/picker",
+    "m-icon": "/components/icon/icon"
+  }
+}

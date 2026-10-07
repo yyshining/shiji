@@ -1,0 +1,6 @@
+function error(e){wx.showModal({title:'未能完成',content:e.message||'保存失败，请检查存储空间后重试。',showCancel:false});}
+function run(fn){try{return fn();}catch(e){error(e);return false;}}
+function go(page,params={}){wx.navigateTo({url:'/pages/'+page+'/'+page+'?'+Object.entries(params).map(([k,v])=>k+'='+encodeURIComponent(v)).join('&')});}
+const date=()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
+function photos(count=9){return new Promise((resolve,reject)=>wx.chooseMedia({count,mediaType:['image'],sourceType:['album','camera'],success:async res=>{const saved=[];try{for(const f of res.tempFiles){const compressed=await new Promise((ok,no)=>wx.compressImage({src:f.tempFilePath,quality:72,success:ok,fail:no}));const result=await new Promise((ok,no)=>wx.getFileSystemManager().saveFile({tempFilePath:compressed.tempFilePath,success:ok,fail:no}));saved.push(result.savedFilePath);}resolve(saved);}catch(e){saved.forEach(filePath=>wx.getFileSystemManager().unlink({filePath}));reject(new Error('照片未保存，请检查空间或重新选择'));}},fail:e=>{if(String(e.errMsg).includes('cancel'))resolve([]);else reject(new Error('无法选择照片，请检查相册权限'));}}));}
+module.exports={error,run,go,date,photos};
