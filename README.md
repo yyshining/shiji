@@ -35,6 +35,10 @@
 
 <table><tr><td width="33%"><img src="docs/images/home.jpg" alt="首页：旅程卡片与记录入口"/></td><td width="33%"><img src="docs/images/diary.jpg" alt="心情日记：表情与横线纸张"/></td><td width="33%"><img src="docs/images/ledger.jpg" alt="共享账本：分摊概览与每日支出"/></td></tr><tr><td align="center">旅程入口</td><td align="center">心情手记</td><td align="center">共享账本</td></tr></table>
 
+<table><tr><td width="33%"><img src="docs/images/overview.jpg" alt="旅程概览：地点与路线关系"/></td><td width="33%"><img src="docs/images/schedule.jpg" alt="单日日程：片段、交通与住宿"/></td><td width="33%"><img src="docs/images/memory.jpg" alt="归档回忆：封面、日记与图片空间"/></td></tr><tr><td align="center">旅程概览</td><td align="center">单日日程</td><td align="center">归档回忆</td></tr></table>
+
+概览中的路线为地点关系示意，公开版不包含行政边界；截图使用仓库自带的示例数据。
+
 ## 三个关键产品决策
 
 **1. 阶段不同，内容归属一致。** 首页保留「在途 / 回忆」方便找到当前旅行；进入旅程后统一「概览 / 日程 / 账本」。归档改变状态，不搬走日记、不丢失清单，也不生成一套孤立数据。
